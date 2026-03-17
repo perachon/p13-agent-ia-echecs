@@ -1,0 +1,16 @@
+services:
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ffe-chess-agent-api
+    environment:
+      - UVICORN_HOST=0.0.0.0
+      - UVICORN_PORT=8000
+    ports:
+      - "${API_PORT:-8000}:8000"
+    restart: unless-stopped
+
+networks:
+  default:
+    name: ffe-chess-agent-net
