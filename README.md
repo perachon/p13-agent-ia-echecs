@@ -221,3 +221,7 @@ Test de persistance conseillé :
 3. `docker compose down` (sans `-v`)
 4. `docker compose up -d`
 5. Re-vérifier `/vector-search` : les données doivent toujours être là
+
+## Étape 7 — Étude de faisabilité (analyse vidéo)
+
+Note détaillée : [docs/etape7_etude_faisabilite_analyse_video.md](docs/etape7_etude_faisabilite_analyse_video.md)
