@@ -154,3 +154,70 @@ Fonctions testables dans l'UI :
 - Échiquier (édition de la position) + bouton **Recommander** (appelle `/api/v1/agent/{fen}`)
 - Recherche **Milvus** (appelle `/vector-search`)
 - Recherche **YouTube** (appelle `/api/v1/youtube/search`)
+
+## Package Docker (Étape 6)
+
+Objectif : une application prête pour démo avec **un seul** `docker compose up --build`.
+
+### Démarrage complet (fresh install)
+
+1. (Optionnel) Réinitialiser conteneurs + volumes (⚠️ supprime les données Milvus persistées)
+
+```bash
+docker compose down -v
+```
+
+2. Démarrer tous les services
+
+```bash
+docker compose up --build
+```
+
+3. Ouvrir l'application
+
+- Frontend (Nginx) : `http://localhost:${FRONTEND_PORT:-8080}`
+- API (FastAPI) : `http://localhost:${API_PORT:-8000}/api/v1/healthcheck`
+
+Si le port `8080` est déjà utilisé sur ta machine, change `FRONTEND_PORT` dans `.env` (ou exporte la variable au moment du lancement) :
+
+```powershell
+$env:FRONTEND_PORT=8081
+docker compose up --build
+```
+
+4. (Recommandé pour la démo) Charger le mini dataset Milvus
+
+```bash
+docker compose exec api python -m app.cli.ingest_sample
+```
+
+Sans ingestion, l'endpoint `/vector-search` peut répondre vide (aucun résultat), ce qui est normal.
+
+Smoke test rapide via le frontend (PowerShell) :
+
+```powershell
+curl.exe -sS http://localhost:${FRONTEND_PORT:-8080}/api/v1/healthcheck
+curl.exe -sS "http://localhost:${FRONTEND_PORT:-8080}/vector-search?q=sicilienne&top_k=3"
+```
+
+### Vérifier la persistance des volumes (Milvus)
+
+Lister les volumes (PowerShell) :
+
+```powershell
+docker volume ls | Select-String milvus
+```
+
+Inspecter un volume (adapter le nom exact vu dans `docker volume ls`) :
+
+```powershell
+docker volume inspect <VOLUME_NAME>
+```
+
+Test de persistance conseillé :
+
+1. Lancer l'ingestion (`ingest_sample`)
+2. Vérifier `/vector-search`
+3. `docker compose down` (sans `-v`)
+4. `docker compose up -d`
+5. Re-vérifier `/vector-search` : les données doivent toujours être là

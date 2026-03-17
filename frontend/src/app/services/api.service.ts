@@ -36,8 +36,10 @@ export type YouTubeSearchResponse = { query: string; max_results: number; result
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
-  // In dev, FastAPI runs on :8000.
-  readonly baseUrl = 'http://localhost:8000';
+  // Default: same-origin (works with nginx proxy in Docker and with Angular dev proxy).
+  // If you run the frontend without a proxy, set a full URL here.
+  readonly baseUrl = '';
+  readonly baseUrlLabel = this.baseUrl || (globalThis.location?.origin ?? '(same origin)');
 
   constructor(private readonly http: HttpClient) {}
 

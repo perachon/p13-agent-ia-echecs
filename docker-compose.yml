@@ -78,6 +78,19 @@ services:
       - YOUTUBE_RELEVANCE_LANGUAGE=${YOUTUBE_RELEVANCE_LANGUAGE:-fr}
     ports:
       - "${API_PORT:-8000}:8000"
+    depends_on:
+      - milvus
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ffe-chess-agent-frontend
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    depends_on:
+      - api
     restart: unless-stopped
 
 networks:
