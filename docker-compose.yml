@@ -1,4 +1,59 @@
 services:
+  milvus-etcd:
+    image: quay.io/coreos/etcd:v3.5.16
+    container_name: milvus-etcd
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=50000
+    command: >
+      etcd
+      -advertise-client-urls=http://0.0.0.0:2379
+      -listen-client-urls=http://0.0.0.0:2379
+      --data-dir=/etcd
+    volumes:
+      - milvus_etcd:/etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    restart: unless-stopped
+
+  milvus-minio:
+    image: minio/minio:RELEASE.2024-10-13T13-34-11Z
+    container_name: milvus-minio
+    environment:
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
+    command: minio server /minio_data --console-address ":9001"
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - milvus_minio:/minio_data
+    restart: unless-stopped
+
+  milvus:
+    image: milvusdb/milvus:v2.4.12
+    container_name: milvus-standalone
+    command: ["milvus", "run", "standalone"]
+    environment:
+      - ETCD_ENDPOINTS=milvus-etcd:2379
+      - MINIO_ADDRESS=milvus-minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
+    ports:
+      - "${MILVUS_PORT:-19530}:19530"
+      - "${MILVUS_METRICS_PORT:-9091}:9091"
+    depends_on:
+      - milvus-etcd
+      - milvus-minio
+    volumes:
+      - milvus_data:/var/lib/milvus
+    restart: unless-stopped
+
   api:
     build:
       context: ./backend
@@ -7,6 +62,20 @@ services:
     environment:
       - UVICORN_HOST=0.0.0.0
       - UVICORN_PORT=8000
+      - LICHESS_EXPLORER_BASE_URL=${LICHESS_EXPLORER_BASE_URL:-https://explorer.lichess.org}
+      - LICHESS_EXPLORER_DB=${LICHESS_EXPLORER_DB:-lichess}
+      - LICHESS_TOKEN=${LICHESS_TOKEN:-}
+      - STOCKFISH_PATH=${STOCKFISH_PATH:-/usr/games/stockfish}
+      - STOCKFISH_DEPTH=${STOCKFISH_DEPTH:-14}
+      - HTTP_TIMEOUT_SECONDS=${HTTP_TIMEOUT_SECONDS:-8}
+      - CORS_ALLOW_ORIGINS=${CORS_ALLOW_ORIGINS:-http://localhost:4200,http://127.0.0.1:4200}
+      - MILVUS_HOST=${MILVUS_HOST:-milvus}
+      - MILVUS_PORT=${MILVUS_PORT:-19530}
+      - MILVUS_COLLECTION=${MILVUS_COLLECTION:-openings}
+      - EMBEDDING_MODEL_NAME=${EMBEDDING_MODEL_NAME:-BAAI/bge-small-en-v1.5}
+      - YOUTUBE_API_KEY=${YOUTUBE_API_KEY:-}
+      - YOUTUBE_REGION_CODE=${YOUTUBE_REGION_CODE:-FR}
+      - YOUTUBE_RELEVANCE_LANGUAGE=${YOUTUBE_RELEVANCE_LANGUAGE:-fr}
     ports:
       - "${API_PORT:-8000}:8000"
     restart: unless-stopped
@@ -14,3 +83,8 @@ services:
 networks:
   default:
     name: ffe-chess-agent-net
+
+volumes:
+  milvus_etcd:
+  milvus_minio:
+  milvus_data:

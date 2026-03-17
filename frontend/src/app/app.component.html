@@ -1,0 +1,126 @@
+<div class="page">
+  <header class="header">
+    <h1 class="title">FFE — Agent IA d’ouvertures (POC)</h1>
+    <p class="subtitle">
+      Échiquier + recommandations (Lichess/Stockfish) + ressources (Milvus + YouTube).
+    </p>
+  </header>
+
+  <main class="grid">
+    <section class="card">
+      <h2>Position</h2>
+
+      <app-chessboard
+        class="board"
+        [fen]="fen"
+        (fenChange)="onFenChange($event)"
+      />
+
+      <div class="row">
+        <label class="label">
+          FEN
+          <input class="input" [(ngModel)]="fen" />
+        </label>
+        <button class="btn" type="button" (click)="setStartPosition()">
+          Start
+        </button>
+        <button class="btn primary" type="button" (click)="recommend()">
+          Recommander
+        </button>
+      </div>
+
+      <div class="status" *ngIf="agentLoading">Chargement…</div>
+      <div class="error" *ngIf="agentError">{{ agentError }}</div>
+
+      <div class="result" *ngIf="agent">
+        <h3>Recommandations</h3>
+        <div class="kv">
+          <div class="k">Source</div>
+          <div class="v">{{ agent.source }}</div>
+        </div>
+        <div class="kv" *ngIf="agent.evaluation">
+          <div class="k">Évaluation</div>
+          <div class="v">{{ agent.evaluation.type }}: {{ agent.evaluation.value }}</div>
+        </div>
+
+        <div class="error" *ngIf="agent.lichess_error">{{ agent.lichess_error }}</div>
+
+        <div class="list" *ngIf="agent.moves?.length">
+          <div class="listTitle">Coups théoriques</div>
+          <ul>
+            <li *ngFor="let m of agent.moves">
+              <span class="mono">{{ m.san || m.uci }}</span>
+              <span class="muted">({{ m.uci }})</span>
+              <span class="muted"> — games: {{ m.games }}</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Ressources</h2>
+
+      <div class="row">
+        <label class="label">
+          Requête
+          <input class="input" [(ngModel)]="searchQuery" placeholder="ex: défense sicilienne" />
+        </label>
+        <label class="label small">
+          Top K
+          <input class="input" type="number" min="1" max="10" [(ngModel)]="topK" />
+        </label>
+        <label class="label small">
+          YouTube
+          <input
+            class="input"
+            type="number"
+            min="1"
+            max="10"
+            [(ngModel)]="youtubeMaxResults"
+          />
+        </label>
+        <button class="btn primary" type="button" (click)="runSearch()">
+          Rechercher
+        </button>
+      </div>
+
+      <div class="status" *ngIf="searchLoading">Chargement…</div>
+      <div class="error" *ngIf="searchError">{{ searchError }}</div>
+
+      <div class="split" *ngIf="vector || youtube">
+        <div class="result" *ngIf="vector">
+          <h3>Milvus</h3>
+          <div class="muted" *ngIf="vector.results?.length === 0">Aucun résultat</div>
+          <ul *ngIf="vector.results?.length">
+            <li *ngFor="let item of vector.results">
+              <div class="itemTitle">{{ item.title || 'Document' }}</div>
+              <div class="muted" *ngIf="item.score !== undefined">
+                score: {{ item.score | number : '1.2-2' }}
+              </div>
+              <div class="excerpt">{{ item.text }}</div>
+            </li>
+          </ul>
+        </div>
+
+        <div class="result" *ngIf="youtube">
+          <h3>YouTube</h3>
+          <div class="muted" *ngIf="youtube.results?.length === 0">Aucun résultat</div>
+          <ul *ngIf="youtube.results?.length">
+            <li *ngFor="let v of youtube.results">
+              <a class="link" [href]="v.url" target="_blank" rel="noreferrer">
+                {{ v.title }}
+              </a>
+              <div class="muted">{{ v.channel_title }}</div>
+              <div class="muted" *ngIf="v.published_at">{{ v.published_at }}</div>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span class="muted">Backend: {{ api.baseUrl }}</span>
+  </footer>
+</div>

@@ -1,0 +1,9 @@
+.board-wrap {
+  width: 100%;
+}
+
+.board-host {
+  width: 100%;
+  max-width: 520px;
+  aspect-ratio: 1 / 1;
+}
