@@ -48,7 +48,24 @@ def _retrieve_rag_node(state: AgentState) -> AgentState:
         return {**state, "rag_results": [], "rag_error": "Missing FEN"}
 
     # Build a simple French query (FR-first) to match our sample knowledge.
-    query = f"ouverture échecs plans et repères pour la position (FEN): {fen}".strip()
+    # If we have theory moves, include top SAN/uci to give the retriever more signal.
+    moves = state.get("theory_moves") or []
+    top_moves = ", ".join(
+        [
+            (m.san or m.uci)
+            for m in (moves[:5] if isinstance(moves, list) else [])
+            if getattr(m, "uci", None)
+        ]
+    )
+
+    query_parts = [
+        "ouverture échecs plans et repères",
+        f"FEN: {fen}",
+    ]
+    if top_moves:
+        query_parts.append(f"coups théoriques: {top_moves}")
+
+    query = " | ".join(query_parts)
 
     try:
         query_embedding = embed_texts([query])[0]

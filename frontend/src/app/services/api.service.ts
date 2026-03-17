@@ -13,12 +13,21 @@ export type TheoryMove = {
 
 export type Evaluation = { type: 'cp' | 'mate'; value: number };
 
+export type RagHit = {
+  score: number;
+  source?: string | null;
+  title?: string | null;
+  text?: string | null;
+};
+
 export type AgentResponse = {
   fen: string;
   source?: 'lichess' | 'stockfish' | string;
   lichess_error?: string;
   moves?: TheoryMove[];
   evaluation?: Evaluation;
+  rag_error?: string;
+  rag_results?: RagHit[];
 };
 
 export type VectorHit = { score: number; source: string; title: string; text: string };

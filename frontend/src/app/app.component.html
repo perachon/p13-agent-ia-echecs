@@ -55,6 +55,21 @@
             </li>
           </ul>
         </div>
+
+        <div class="list" *ngIf="agent.rag_results?.length">
+          <div class="listTitle">Contexte (Milvus)</div>
+          <ul>
+            <li *ngFor="let item of agent.rag_results">
+              <div class="itemTitle">{{ item.title || 'Document' }}</div>
+              <div class="muted" *ngIf="item.score !== undefined">
+                score: {{ item.score | number : '1.2-2' }}
+              </div>
+              <div class="excerpt">{{ item.text }}</div>
+            </li>
+          </ul>
+        </div>
+
+        <div class="error" *ngIf="agent.rag_error">RAG: {{ agent.rag_error }}</div>
       </div>
     </section>
 

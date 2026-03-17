@@ -178,6 +178,13 @@ docker compose up --build
 - Frontend (Nginx) : `http://localhost:${FRONTEND_PORT:-8080}`
 - API (FastAPI) : `http://localhost:${API_PORT:-8000}/api/v1/healthcheck`
 
+Accès depuis un autre appareil du réseau (LAN) :
+
+- Frontend : `http://<IP_DE_TA_MACHINE>:${FRONTEND_PORT:-8080}`
+- API : `http://<IP_DE_TA_MACHINE>:${API_PORT:-8000}/api/v1/healthcheck`
+
+(Selon Windows/pare-feu, il peut falloir autoriser Docker à écouter sur ces ports.)
+
 Si le port `8080` est déjà utilisé sur ta machine, change `FRONTEND_PORT` dans `.env` (ou exporte la variable au moment du lancement) :
 
 ```powershell
@@ -189,6 +196,13 @@ docker compose up --build
 
 ```bash
 docker compose exec api python -m app.cli.ingest_sample
+```
+
+Optionnel (si tu as un export Wikichess en JSONL) :
+
+```powershell
+$env:WIKICHESS_JSONL_PATH = "C:\\path\\to\\wikichess.jsonl"
+docker compose exec -e WIKICHESS_JSONL_PATH=$env:WIKICHESS_JSONL_PATH api python -m app.cli.ingest_wikichess
 ```
 
 Sans ingestion, l'endpoint `/vector-search` peut répondre vide (aucun résultat), ce qui est normal.

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from app.rag.chunking import chunk_text
 from app.rag.embeddings import embed_texts
 from app.rag.milvus_service import MilvusService, RagDoc
 
@@ -16,7 +17,20 @@ def main() -> None:
         if not line.strip():
             continue
         row = json.loads(line)
-        docs.append(RagDoc(source=row["source"], title=row["title"], text=row["text"]))
+        text = str(row.get("text") or "").strip()
+        chunks = chunk_text(text, max_chars=1200, overlap=120) or []
+        if not chunks:
+            continue
+
+        base_title = str(row.get("title") or "Document").strip()
+        for i, chunk in enumerate(chunks, start=1):
+            docs.append(
+                RagDoc(
+                    source=str(row.get("source") or "sample"),
+                    title=f"{base_title} (chunk {i})" if len(chunks) > 1 else base_title,
+                    text=chunk,
+                )
+            )
 
     embeddings = embed_texts([d.text for d in docs])
     service = MilvusService()
