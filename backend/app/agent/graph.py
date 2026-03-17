@@ -4,6 +4,8 @@ import chess
 from langgraph.graph import END, StateGraph
 
 from app.agent.state import AgentState
+from app.rag.embeddings import embed_texts
+from app.rag.milvus_service import MilvusService
 from app.services.fen import validate_fen
 from app.services.lichess_service import LichessService
 from app.services.stockfish_service import StockfishService
@@ -34,6 +36,29 @@ def _end_with_lichess_node(state: AgentState) -> AgentState:
     return {**state, "source": "lichess"}
 
 
+def _retrieve_rag_node(state: AgentState) -> AgentState:
+    """Retrieve opening context from Milvus (best-effort).
+
+    Note: FEN alone is not ideal text for retrieval; we still connect RAG into the
+    workflow to enrich responses when the knowledge base contains relevant docs.
+    """
+
+    fen = state.get("fen", "")
+    if not isinstance(fen, str) or not fen.strip():
+        return {**state, "rag_results": [], "rag_error": "Missing FEN"}
+
+    # Build a simple French query (FR-first) to match our sample knowledge.
+    query = f"ouverture échecs plans et repères pour la position (FEN): {fen}".strip()
+
+    try:
+        query_embedding = embed_texts([query])[0]
+        service = MilvusService()
+        hits = service.search(query_embedding=query_embedding, top_k=5)
+        return {**state, "rag_results": hits}
+    except Exception as exc:
+        return {**state, "rag_results": [], "rag_error": str(exc)}
+
+
 def _evaluate_stockfish_node(state: AgentState) -> AgentState:
     board: chess.Board = validate_fen(state["fen"])
     service = StockfishService()
@@ -48,6 +73,7 @@ def build_agent_graph():
     graph.add_node("fetch_lichess", _fetch_theory_moves_node)
     graph.add_node("end_with_lichess", _end_with_lichess_node)
     graph.add_node("evaluate_stockfish", _evaluate_stockfish_node)
+    graph.add_node("retrieve_rag", _retrieve_rag_node)
 
     graph.set_entry_point("validate_fen")
     graph.add_edge("validate_fen", "fetch_lichess")
@@ -59,7 +85,11 @@ def build_agent_graph():
             "evaluate_stockfish": "evaluate_stockfish",
         },
     )
-    graph.add_edge("end_with_lichess", END)
-    graph.add_edge("evaluate_stockfish", END)
+    # Finalize through RAG retrieval for both paths.
+    graph.add_edge("evaluate_stockfish", "retrieve_rag")
+    graph.add_edge("retrieve_rag", END)
+
+    # If we ended with lichess (theory moves found), also enrich with RAG.
+    graph.add_edge("end_with_lichess", "retrieve_rag")
 
     return graph.compile()

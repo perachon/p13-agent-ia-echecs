@@ -78,22 +78,38 @@ class MilvusService:
 
     def search(self, query_embedding: list[float], top_k: int = 5) -> list[dict]:
         collection = self.ensure_collection(dim=len(query_embedding))
+
+        # Fetch extra candidates to absorb potential duplicates.
+        raw_limit = max(top_k, top_k * 3)
         results = collection.search(
             data=[query_embedding],
             anns_field="embedding",
             param={"metric_type": "IP", "params": {"ef": 64}},
-            limit=top_k,
+            limit=raw_limit,
             output_fields=["source", "title", "text"],
         )
 
-        hits = []
+        hits: list[dict] = []
+        seen: set[tuple[str | None, str | None, str | None]] = set()
         for hit in results[0]:
+            source = hit.entity.get("source")
+            title = hit.entity.get("title")
+            text = hit.entity.get("text")
+            key = (source, title, text)
+            if key in seen:
+                continue
+            seen.add(key)
+
             hits.append(
                 {
                     "score": float(hit.score),
-                    "source": hit.entity.get("source"),
-                    "title": hit.entity.get("title"),
-                    "text": hit.entity.get("text"),
+                    "source": source,
+                    "title": title,
+                    "text": text,
                 }
             )
+
+            if len(hits) >= top_k:
+                break
+
         return hits

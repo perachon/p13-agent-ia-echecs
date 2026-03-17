@@ -90,6 +90,8 @@ def agent_recommendation(fen: str) -> dict:
 
     moves = result.get("theory_moves") or []
     evaluation = result.get("evaluation")
+    rag_results = result.get("rag_results")
+    rag_error = result.get("rag_error")
 
     payload: dict = {"fen": fen, "source": result.get("source")}
     if result.get("lichess_error"):
@@ -108,6 +110,12 @@ def agent_recommendation(fen: str) -> dict:
         ]
     if evaluation is not None:
         payload["evaluation"] = {"type": evaluation.type, "value": evaluation.value}
+
+    # Optional enrichment from the vector DB (best-effort).
+    if rag_error:
+        payload["rag_error"] = rag_error
+    if rag_results is not None:
+        payload["rag_results"] = rag_results
 
     return payload
 
