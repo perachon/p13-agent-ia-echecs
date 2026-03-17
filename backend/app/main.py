@@ -126,6 +126,11 @@ def vector_search(q: str, top_k: int = 5) -> dict:
     if not q.strip():
         raise HTTPException(status_code=400, detail="Query is required")
 
+    if top_k < 1:
+        raise HTTPException(status_code=400, detail="top_k must be >= 1")
+    if top_k > 20:
+        top_k = 20
+
     try:
         query_embedding = embed_texts([q])[0]
         service = MilvusService()

@@ -33,6 +33,11 @@ services:
       - "${MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
       - milvus_minio:/minio_data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9000/minio/health/ready >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
     restart: unless-stopped
 
   milvus:
@@ -48,10 +53,17 @@ services:
       - "${MILVUS_PORT:-19530}:19530"
       - "${MILVUS_METRICS_PORT:-9091}:9091"
     depends_on:
-      - milvus-etcd
-      - milvus-minio
+      milvus-etcd:
+        condition: service_healthy
+      milvus-minio:
+        condition: service_healthy
     volumes:
       - milvus_data:/var/lib/milvus
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9091/metrics >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
     restart: unless-stopped
 
   api:
@@ -79,7 +91,8 @@ services:
     ports:
       - "${API_PORT:-8000}:8000"
     depends_on:
-      - milvus
+      milvus:
+        condition: service_healthy
     healthcheck:
       test:
         [

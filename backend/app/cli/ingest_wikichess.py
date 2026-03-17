@@ -49,11 +49,21 @@ def main() -> None:
     raw_lines = data_path.read_text(encoding="utf-8").splitlines()
 
     docs: list[RagDoc] = []
+    skipped_invalid_json = 0
+    skipped_non_dict = 0
+    skipped_empty_text = 0
+    total_rows = 0
     for line in raw_lines:
         if not line.strip():
             continue
-        row = json.loads(line)
+        total_rows += 1
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            skipped_invalid_json += 1
+            continue
         if not isinstance(row, dict):
+            skipped_non_dict += 1
             continue
 
         title = row.get("title")
@@ -62,6 +72,7 @@ def main() -> None:
         source_str = source.strip() if isinstance(source, str) else "wikichess"
         text = _guess_text(row)
         if not text.strip():
+            skipped_empty_text += 1
             continue
 
         for i, chunk in enumerate(chunk_text(text, max_chars=1200, overlap=120), start=1):
@@ -74,12 +85,19 @@ def main() -> None:
             )
 
     if not docs:
-        raise SystemExit("No documents extracted from the dataset.")
+        raise SystemExit(
+            "No documents extracted from the dataset. "
+            f"rows={total_rows} invalid_json={skipped_invalid_json} non_dict={skipped_non_dict} empty_text={skipped_empty_text}"
+        )
 
     embeddings = embed_texts([d.text for d in docs])
     service = MilvusService()
     inserted = service.upsert_documents(docs, embeddings)
     print(f"Inserted {inserted} documents into Milvus (wikichess)")
+    print(
+        "Skipped rows: "
+        f"rows={total_rows} invalid_json={skipped_invalid_json} non_dict={skipped_non_dict} empty_text={skipped_empty_text}"
+    )
 
 
 if __name__ == "__main__":

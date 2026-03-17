@@ -13,13 +13,20 @@ def main() -> None:
     raw_lines = data_path.read_text(encoding="utf-8").splitlines()
 
     docs: list[RagDoc] = []
+    skipped_invalid_json = 0
+    skipped_empty_text = 0
     for line in raw_lines:
         if not line.strip():
             continue
-        row = json.loads(line)
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            skipped_invalid_json += 1
+            continue
         text = str(row.get("text") or "").strip()
         chunks = chunk_text(text, max_chars=1200, overlap=120) or []
         if not chunks:
+            skipped_empty_text += 1
             continue
 
         base_title = str(row.get("title") or "Document").strip()
@@ -36,6 +43,11 @@ def main() -> None:
     service = MilvusService()
     inserted = service.upsert_documents(docs, embeddings)
     print(f"Inserted {inserted} documents into Milvus")
+    if skipped_invalid_json or skipped_empty_text:
+        print(
+            "Skipped lines: "
+            f"invalid_json={skipped_invalid_json} empty_text={skipped_empty_text}"
+        )
 
 
 if __name__ == "__main__":

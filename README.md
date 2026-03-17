@@ -185,6 +185,13 @@ Accès depuis un autre appareil du réseau (LAN) :
 
 (Selon Windows/pare-feu, il peut falloir autoriser Docker à écouter sur ces ports.)
 
+Note CORS :
+
+- Si tu utilises le frontend Docker (Nginx) via `http://<IP>:${FRONTEND_PORT}`, le navigateur appelle l'API via le même origin (`/api/...` et `/vector-search` reverse-proxy) : **pas besoin de CORS**.
+- CORS est surtout utile quand tu appelles **directement** l'API depuis un autre origin (ex: `ng serve` ou une page différente). Dans ce cas, ajoute l'origin à `CORS_ALLOW_ORIGINS` (ex: `http://<IP_DE_TA_MACHINE>:4200`).
+
+Sécurité (POC) : ne commit pas ton `.env` (tokens/clé YouTube). Utilise `.env.example` comme modèle.
+
 Si le port `8080` est déjà utilisé sur ta machine, change `FRONTEND_PORT` dans `.env` (ou exporte la variable au moment du lancement) :
 
 ```powershell
